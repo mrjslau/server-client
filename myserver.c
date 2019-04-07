@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <unistd.h>  // close()
-#include <netdb.h>   // addrinfo struct, getaddrinfo()
+#include <unistd.h> 
+#include <netdb.h>
 
 #define PORT "3490"  // the port users will be connecting to
 #define BACKLOG 5
@@ -75,7 +75,7 @@ int main() {
         exit(1);
     }
     else {
-        printf("server: Bind successful; fdlistener = %d\n", fdlistener);
+        printf("server: bind successful; fdlistener = %d\n", fdlistener);
     }
 
     // Laukiam connectionu + Kiek connectionu priimsim i queue
@@ -84,7 +84,7 @@ int main() {
         exit(1);
     }
     else {
-        printf("server: Waiting for connections ...\n");
+        printf("server: waiting for connections ...\n");
     }
 
     // add the listener to the master set
@@ -119,12 +119,15 @@ int main() {
                         if (new_clientfd > fdmax) {    // keep track of the max
                             fdmax = new_clientfd;
                         }
-                        printf("server: New connection from %s on socket %d\n",
+                        printf("server: new connection from %s on socket %d\n",
                             inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr*)&remoteaddr), remoteIP, INET6_ADDRSTRLEN), new_clientfd);
                             // ^ return IP in string form from client struct
                     }
                 // READ CURRENT CONNECTIONS
                 } else {
+                    getpeername(i, (struct sockaddr *)&remoteaddr, &addrlen);
+                    
+                    printf("Client IP = %s \n", inet_ntop(AF_INET6, get_in_addr((struct sockaddr*)&remoteaddr), remoteIP, INET6_ADDRSTRLEN));
                     // handle data from a client
                     if ((recv_bytes = recv(i, buf, sizeof buf, 0)) <= 0) {
                         // got error or connection closed by client

@@ -32,12 +32,12 @@ int main() {
 
     struct timeval tv;
 
-    tv.tv_sec = 10;
+    tv.tv_sec = 25;
     tv.tv_usec = 0;
 
     //Read
     char buf[256];    // buffer for client data
-    int nbytes;
+    int recv_bytes;
 
     memset(&hints, 0, sizeof hints);  // clean struct
     hints.ai_family = AF_UNSPEC;      // ipv4 or ipv6
@@ -67,7 +67,6 @@ int main() {
 
         break;
     }
-
     // Free memory
     freeaddrinfo(addr);
 
@@ -75,11 +74,17 @@ int main() {
         fprintf(stderr, "server: failed to bind\n");
         exit(1);
     }
+    else {
+        printf("server: Bind successful; fdlistener = %d\n", fdlistener);
+    }
 
     // Laukiam connectionu + Kiek connectionu priimsim i queue
     if (listen(fdlistener, BACKLOG) == -1) {
         perror("listen");
         exit(1);
+    }
+    else {
+        printf("server: Waiting for connections ...\n");
     }
 
     // add the listener to the master set
@@ -89,6 +94,8 @@ int main() {
 
     // main loop
     for(;;) {
+        int action_flag = 0;
+        printf("fdmax = %d\n", fdmax);
         read_fds = master; // copy set
         // monitors fds ------read----write-except-timeout--------
         if (select(fdmax+1, &read_fds, NULL, NULL, &tv) == -1) {
@@ -99,6 +106,7 @@ int main() {
         // run through the existing connections looking for data to read
         for(int i = 0; i <= fdmax; i++) {
             if (FD_ISSET(i, &read_fds)) {
+                action_flag = 1;
                 // NEW CONNECTION
                 if (i == fdlistener) {
                     // handle new connections
@@ -111,17 +119,18 @@ int main() {
                         if (new_clientfd > fdmax) {    // keep track of the max
                             fdmax = new_clientfd;
                         }
-                        printf("selectserver: new connection from %s on socket %d\n",
+                        printf("server: New connection from %s on socket %d\n",
                             inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr*)&remoteaddr), remoteIP, INET6_ADDRSTRLEN), new_clientfd);
+                            // ^ return IP in string form from client struct
                     }
                 // READ CURRENT CONNECTIONS
                 } else {
                     // handle data from a client
-                    if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
+                    if ((recv_bytes = recv(i, buf, sizeof buf, 0)) <= 0) {
                         // got error or connection closed by client
-                        if (nbytes == 0) {
+                        if (recv_bytes == 0) {
                             // connection closed
-                            printf("selectserver: socket %d hung up\n", i);
+                            printf("server: socket %d hung up\n", i);
                         } else {
                             perror("recv");
                         }
@@ -134,7 +143,7 @@ int main() {
                             if (FD_ISSET(j, &master)) {
                                 // except the listener and ourselves
                                 if (j != fdlistener && j != i) {
-                                    if (send(j, buf, nbytes, 0) == -1) {
+                                    if (send(j, buf, recv_bytes, 0) == -1) {
                                         perror("send");
                                     }
                                 }
@@ -144,15 +153,13 @@ int main() {
                 } // END handle data from client
             } // END got new incoming connection
         } // END looping through file descriptors
-
-        if (FD_ISSET(0, &read_fds))
-            printf("A key was pressed!\n");
-        else {
-            printf("Timed out.\n");
+        
+        if (action_flag == 0){
+            printf("server: Timed out.\n");
             exit(1);
         }
-
-    } // END for(;;)--and you thought it would never end!
+        
+    } // END for(;;)
 
     return 0;
 }

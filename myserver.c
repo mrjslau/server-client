@@ -8,6 +8,14 @@
 #define PORT "3490"  // the port users will be connecting to
 #define BACKLOG 5
 
+struct modBuf processBuffer(char *text);
+char * search_inFile(char *fname, char *str);
+
+struct modBuf {
+    char str[256];
+    int len;
+};
+
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -36,8 +44,9 @@ int main() {
     tv.tv_usec = 0;
 
     //Read
-    char buf[256];    // buffer for client data
+    char buf[256];  // buffer for client data
     int recv_bytes;
+    struct modBuf modded;
 
     memset(&hints, 0, sizeof hints);  // clean struct
     hints.ai_family = AF_UNSPEC;      // ipv4 or ipv6
@@ -95,7 +104,7 @@ int main() {
     // main loop
     for(;;) {
         int action_flag = 0;
-        printf("fdmax = %d\n", fdmax);
+        // printf("fdmax = %d\n", fdmax);
         read_fds = master; // copy set
         // monitors fds ------read----write-except-timeout--------
         if (select(fdmax+1, &read_fds, NULL, NULL, &tv) == -1) {
@@ -114,7 +123,7 @@ int main() {
                     if ((new_clientfd = accept(fdlistener, (struct sockaddr *)&remoteaddr, &addrlen)) == -1 ) {
                         perror("accept");
                     } else {
-                        send(new_clientfd, "Hello", 32, 0);
+                        send(new_clientfd, "server: Welcome to SocketDictionary", 36, 0);
                         FD_SET(new_clientfd, &master); // add to master set
                         if (new_clientfd > fdmax) {    // keep track of the max
                             fdmax = new_clientfd;
@@ -125,33 +134,46 @@ int main() {
                     }
                 // READ CURRENT CONNECTIONS
                 } else {
-                    getpeername(i, (struct sockaddr *)&remoteaddr, &addrlen);
-                    
-                    printf("Client IP = %s \n", inet_ntop(AF_INET6, get_in_addr((struct sockaddr*)&remoteaddr), remoteIP, INET6_ADDRSTRLEN));
+                    getpeername(i, (struct sockaddr *)&remoteaddr, &addrlen); 
+                    const char * tempIP = inet_ntop(AF_INET6, get_in_addr((struct sockaddr*)&remoteaddr), remoteIP, INET6_ADDRSTRLEN);
+                    printf("client: %s : ", tempIP);
+
                     // handle data from a client
                     if ((recv_bytes = recv(i, buf, sizeof buf, 0)) <= 0) {
                         // got error or connection closed by client
                         if (recv_bytes == 0) {
                             // connection closed
-                            printf("server: socket %d hung up\n", i);
+                            printf("hung up on socket %d\n", i);
                         } else {
                             perror("recv");
                         }
-                        close(i); // bye!
+                        close(i); 
                         FD_CLR(i, &master); // remove from master set
                     } else {
-                        // we got some data from a client
+                        // Get translation
+                        modded = processBuffer(buf);
+                        printf("asked to translate - %s \n", buf);
+                        char *match = search_inFile("dictionary.txt", modded.str);
+                        modded = processBuffer(match);
+
+                        if (send(i, modded.str, modded.len, 0) == -1) {
+                            perror("send");
+                        }
+                        else {
+                            printf("server: sent %s to %s\n", modded.str, tempIP);
+                        }
+                        /*
                         for(int j = 0; j <= fdmax; j++) {
                             // send to everyone!
                             if (FD_ISSET(j, &master)) {
                                 // except the listener and ourselves
-                                if (j != fdlistener && j != i) {
-                                    if (send(j, buf, recv_bytes, 0) == -1) {
+                                if (j != fdlistener ) {//&& j != i
+                                    if (send(j, modded.str, modded.len, 0) == -1) {
                                         perror("send");
                                     }
                                 }
                             }
-                        }
+                        } */
                     }
                 } // END handle data from client
             } // END got new incoming connection
@@ -159,10 +181,85 @@ int main() {
         
         if (action_flag == 0){
             printf("server: Timed out.\n");
+            close(fdlistener);
             exit(1);
         }
         
     } // END for(;;)
 
     return 0;
+}
+
+struct modBuf processBuffer(char *text) {
+   int length, c, d;
+   char *start;
+   struct modBuf resultStruct;
+   
+   c = d = 0;
+   
+   length = strlen(text);
+ 
+   start = (char*)malloc(length+1);
+   
+   if (start == NULL)
+      exit(EXIT_FAILURE);
+   
+   while (*(text+c) != '\0') {
+      if (*(text+c) == ' ') {
+         int temp = c + 1;
+         if (*(text+temp) != '\0') {
+            while (*(text+temp) == ' ' && *(text+temp) != '\0') {
+               if (*(text+temp) == ' ') {
+                  c++;
+               }  
+               temp++;
+            }
+         }
+      }
+      *(start+d) = *(text+c);
+      c++;
+      d++;
+   }
+   *(start+d)= '\0';
+
+   for(int i = 0; i <= d; i++) {
+       resultStruct.str[i] = *(start+i);
+   } 
+   resultStruct.len = d;
+   resultStruct.str[resultStruct.len-1] = '\0';
+
+   return resultStruct;
+}
+
+char * search_inFile(char *fname, char *str) {
+	FILE *fp;
+	int line_num = 1;
+	int find_result = 0;
+	char *result;
+    result = (char*)malloc(512);
+
+	if((fp = fopen(fname, "r")) == NULL) {
+        printf("server: fileopen error\n");
+		return("error occured");
+	}
+
+	while(fgets(result, 512, fp) != NULL) {
+		if((strstr(result, str)) != NULL) {
+			//printf("A match found on line: %d\n", line_num);
+			//printf("\n%s\n", result);
+			find_result++;
+            break;
+		}
+		line_num++;
+    }
+
+    if(fp) {
+		fclose(fp);
+	}
+
+	if(find_result == 0) {
+		printf("server: filesearch: couldn't find a match.\n");
+        return("no match found in dictionary");
+	}
+   	return(result);
 }

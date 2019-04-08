@@ -73,17 +73,34 @@ int main(int argc, char *argv[])
     }
 
     if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-        perror("recv");
+        perror("client: recv");
         exit(1);
     }
-    buf[numbytes] = '\0';
+    buf[numbytes-1] = '\0';
     printf("client: received '%s'\n",buf);
 
     // MESSAGING -------------------
     for(;;) {
-        printf("Message: ");
-        fgets(buf, sizeof(buf), stdin); 
-        buf[numbytes] = '\0';
+        printf("Word: ");
+        fgets(buf, sizeof(buf), stdin);
+        
+        // QUIT
+        if(buf[0] == 'q' && buf[1] == '(' && buf[2] == ')') {
+            break;
+        }
+        // MONITOR
+        if(buf[0] == 'm' && buf[1] == '(' && buf[2] == ')') {
+            for(;;) {
+                if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
+                    perror("recv");
+                    exit(1);
+                }
+                printf("client-monitor: received '%s'\n",buf);   
+            }
+            break;
+        }
+
+        //buf[numbytes] = '\0';
 
         send(sockfd, buf, sizeof(buf), 0);
 
@@ -95,6 +112,7 @@ int main(int argc, char *argv[])
     }
     // END MESSAGING -------------------
 
+    printf("client: disconnected.\n");
     close(sockfd);
     return 0;
 }

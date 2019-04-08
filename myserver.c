@@ -5,7 +5,7 @@
 #include <unistd.h> 
 #include <netdb.h>
 
-#define PORT "3490"  // the port users will be connecting to
+#define PORT "3490"
 #define BACKLOG 5
 
 struct modBuf processBuffer(char *text);
@@ -44,7 +44,7 @@ int main() {
     tv.tv_usec = 0;
 
     //Read
-    char buf[256];  // buffer for client data
+    char buf[256]; 
     int recv_bytes;
     struct modBuf modded;
 
@@ -67,7 +67,6 @@ int main() {
             continue;
         }
 
-        // Bindinames prie socketo
         if (bind(fdlistener, p->ai_addr, p->ai_addrlen) == -1) {
             close(fdlistener);
             perror("server: bind");
@@ -96,16 +95,12 @@ int main() {
         printf("server: waiting for connections ...\n");
     }
 
-    // add the listener to the master set
     FD_SET(fdlistener, &master);
-    // keep track of the biggest file descriptor
-    fdmax = fdlistener; // so far, it's this one
+    fdmax = fdlistener;
 
-    // main loop
     for(;;) {
         int action_flag = 0;
-        // printf("fdmax = %d\n", fdmax);
-        read_fds = master; // copy set
+        read_fds = master;
         // monitors fds ------read----write-except-timeout--------
         if (select(fdmax+1, &read_fds, NULL, NULL, &tv) == -1) {
             perror("select");
@@ -118,7 +113,6 @@ int main() {
                 action_flag = 1;
                 // NEW CONNECTION
                 if (i == fdlistener) {
-                    // handle new connections
                     addrlen = sizeof(remoteaddr);
                     if ((new_clientfd = accept(fdlistener, (struct sockaddr *)&remoteaddr, &addrlen)) == -1 ) {
                         perror("accept");
@@ -130,7 +124,6 @@ int main() {
                         }
                         printf("server: new connection from %s on socket %d\n",
                             inet_ntop(remoteaddr.ss_family, get_in_addr((struct sockaddr*)&remoteaddr), remoteIP, INET6_ADDRSTRLEN), new_clientfd);
-                            // ^ return IP in string form from client struct
                     }
                 // READ CURRENT CONNECTIONS
                 } else {
@@ -259,7 +252,7 @@ char * search_inFile(char *fname, char *str) {
 
 	if(find_result == 0) {
 		printf("server: filesearch: couldn't find a match.\n");
-        return("no match found in dictionary");
+        return("no match found in dictionary ");
 	}
    	return(result);
 }

@@ -5,8 +5,8 @@
 #include <unistd.h> 
 #include <netdb.h>  
 
-#define PORT "3490" // the port client will be connecting to 
-#define MAXDATASIZE 100 // max number of bytes we can get at once 
+#define PORT "3490" 
+#define MAXDATASIZE 100
 
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -34,8 +34,6 @@ int main(int argc, char *argv[])
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    // If the AI_PASSIVE flag is not set in hints.ai_flags, then the returned socket addresses
-    // will be suitable for use with connect(2), sendto(2), or sendmsg(2).
 
     if ((err = getaddrinfo(argv[1], PORT, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
@@ -59,7 +57,6 @@ int main(int argc, char *argv[])
         break;
     }
 
-    // Free memory
     freeaddrinfo(servinfo); 
 
     if (p == NULL) {
@@ -99,9 +96,6 @@ int main(int argc, char *argv[])
             }
             break;
         }
-
-        //buf[numbytes] = '\0';
-
         send(sockfd, buf, sizeof(buf), 0);
 
         if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {

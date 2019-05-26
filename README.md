@@ -18,5 +18,9 @@ Client:
 $ gcc -o myclient myclient.c
 $ ./myclient <serverIP>
 
+  // Example
   Word: das Brot
+  
+  // To disconnect from server
+  Word: q()
 ```

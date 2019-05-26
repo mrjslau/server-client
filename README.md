@@ -4,7 +4,7 @@ Simple server-client written entirely in C. Works with UNIX sockets.
 Connect with client app to the server and get translations for German words.
 
 ## Prerequisites
-gcc
+UNIX-like OS
 
 ## Running
 Server:
